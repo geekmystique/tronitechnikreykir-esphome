@@ -39,6 +39,8 @@ climate:
       name: "AC UVC Light"
     mute:
       name: "AC Mute"
+    turbo:
+      name: "AC Turbo"
     display:
       name: "AC Display"
     vane_position:

@@ -157,6 +157,7 @@ void ReykirAcClimate::publish_switch_states_() {
   if (this->sleep_switch_ != nullptr) this->sleep_switch_->publish_state(features & FEATURE_SLEEP);
   if (this->uvc_switch_ != nullptr) this->uvc_switch_->publish_state(features & FEATURE_UVC);
   if (this->mute_switch_ != nullptr) this->mute_switch_->publish_state(features & FEATURE_MUTE);
+  if (this->turbo_switch_ != nullptr) this->turbo_switch_->publish_state(features & FEATURE_TURBO);
   if (this->display_switch_ != nullptr) this->display_switch_->publish_state(features & FEATURE_DISPLAY);
 }
 

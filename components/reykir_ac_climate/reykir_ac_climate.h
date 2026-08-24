@@ -16,9 +16,10 @@ namespace reykir_ac_climate {
 //  3      power            0x00 off | 0x01 on
 //  4      unused           always 0x00
 //  5      vane/swing       0x00 swing | 0x01-0x05 fixed position
-//  6      unused/static    always 0x09 (unknown function, always sent as-is)
+//  6      secondary mode   varies with mode (0x08 Dry/FanOnly, 0x09 Auto/Heat,
+//                          0x0A Cool) - not static, always mirrored as-is
 //  7      mode             0x00 Auto, 0x01 Cool, 0x02 Dry, 0x03 Heat, 0x04 Fan Only
-//  8      feature bitmask  bit 0x01 sleep, 0x02 uvc, 0x04 mute, 0x10 display
+//  8      feature bitmask  bit 0x01 sleep, 0x02 uvc, 0x04 mute, 0x08 turbo, 0x10 display
 //  9      fan speed        0x00 Auto, 0x01 Low, 0x02 Medium, 0x03 High
 //  10     target temp      direct degC
 //  11     room temp        direct degC
@@ -64,11 +65,13 @@ static const uint8_t VANE_FIXED_MAX = 0x05;
 static const uint8_t FEATURE_SLEEP = 0x01;
 static const uint8_t FEATURE_UVC = 0x02;
 static const uint8_t FEATURE_MUTE = 0x04;
+static const uint8_t FEATURE_TURBO = 0x08;
 static const uint8_t FEATURE_DISPLAY = 0x10;
 
 class ReykirAcSleepSwitch;
 class ReykirAcUvcSwitch;
 class ReykirAcMuteSwitch;
+class ReykirAcTurboSwitch;
 class ReykirAcDisplaySwitch;
 class ReykirAcVaneSelect;
 
@@ -85,6 +88,7 @@ class ReykirAcClimate : public climate::Climate, public PollingComponent, public
   void set_sleep_switch(ReykirAcSleepSwitch *sw) { sleep_switch_ = sw; }
   void set_uvc_switch(ReykirAcUvcSwitch *sw) { uvc_switch_ = sw; }
   void set_mute_switch(ReykirAcMuteSwitch *sw) { mute_switch_ = sw; }
+  void set_turbo_switch(ReykirAcTurboSwitch *sw) { turbo_switch_ = sw; }
   void set_display_switch(ReykirAcDisplaySwitch *sw) { display_switch_ = sw; }
   void set_vane_select(ReykirAcVaneSelect *sel) { vane_select_ = sel; }
 
@@ -109,6 +113,7 @@ class ReykirAcClimate : public climate::Climate, public PollingComponent, public
   ReykirAcSleepSwitch *sleep_switch_{nullptr};
   ReykirAcUvcSwitch *uvc_switch_{nullptr};
   ReykirAcMuteSwitch *mute_switch_{nullptr};
+  ReykirAcTurboSwitch *turbo_switch_{nullptr};
   ReykirAcDisplaySwitch *display_switch_{nullptr};
   ReykirAcVaneSelect *vane_select_{nullptr};
 
@@ -146,6 +151,15 @@ class ReykirAcMuteSwitch : public switch_::Switch, public Component {
  public:
   void set_parent(ReykirAcClimate *parent) { parent_ = parent; }
   void write_state(bool state) override { parent_->set_feature_bit(FEATURE_MUTE, state); }
+
+ protected:
+  ReykirAcClimate *parent_;
+};
+
+class ReykirAcTurboSwitch : public switch_::Switch, public Component {
+ public:
+  void set_parent(ReykirAcClimate *parent) { parent_ = parent; }
+  void write_state(bool state) override { parent_->set_feature_bit(FEATURE_TURBO, state); }
 
  protected:
   ReykirAcClimate *parent_;

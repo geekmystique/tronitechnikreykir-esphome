@@ -15,12 +15,14 @@ ReykirAcClimate = reykir_ac_climate_ns.class_(
 ReykirAcSleepSwitch = reykir_ac_climate_ns.class_("ReykirAcSleepSwitch", switch.Switch, cg.Component)
 ReykirAcUvcSwitch = reykir_ac_climate_ns.class_("ReykirAcUvcSwitch", switch.Switch, cg.Component)
 ReykirAcMuteSwitch = reykir_ac_climate_ns.class_("ReykirAcMuteSwitch", switch.Switch, cg.Component)
+ReykirAcTurboSwitch = reykir_ac_climate_ns.class_("ReykirAcTurboSwitch", switch.Switch, cg.Component)
 ReykirAcDisplaySwitch = reykir_ac_climate_ns.class_("ReykirAcDisplaySwitch", switch.Switch, cg.Component)
 ReykirAcVaneSelect = reykir_ac_climate_ns.class_("ReykirAcVaneSelect", select.Select, cg.Component)
 
 CONF_SLEEP_MODE = "sleep_mode"
 CONF_UVC_LIGHT = "uvc_light"
 CONF_MUTE = "mute"
+CONF_TURBO = "turbo"
 CONF_DISPLAY = "display"
 CONF_VANE_POSITION = "vane_position"
 
@@ -39,6 +41,9 @@ CONFIG_SCHEMA = climate.climate_schema(ReykirAcClimate).extend(
         ),
         cv.Optional(CONF_MUTE): switch.switch_schema(
             ReykirAcMuteSwitch, entity_category=ENTITY_CATEGORY_CONFIG
+        ),
+        cv.Optional(CONF_TURBO): switch.switch_schema(
+            ReykirAcTurboSwitch, entity_category=ENTITY_CATEGORY_CONFIG
         ),
         cv.Optional(CONF_DISPLAY): switch.switch_schema(
             ReykirAcDisplaySwitch, entity_category=ENTITY_CATEGORY_CONFIG
@@ -72,6 +77,12 @@ async def to_code(config):
         await cg.register_component(sw, config[CONF_MUTE])
         cg.add(sw.set_parent(var))
         cg.add(var.set_mute_switch(sw))
+
+    if CONF_TURBO in config:
+        sw = await switch.new_switch(config[CONF_TURBO])
+        await cg.register_component(sw, config[CONF_TURBO])
+        cg.add(sw.set_parent(var))
+        cg.add(var.set_turbo_switch(sw))
 
     if CONF_DISPLAY in config:
         sw = await switch.new_switch(config[CONF_DISPLAY])

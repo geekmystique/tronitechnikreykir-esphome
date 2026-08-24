@@ -46,9 +46,9 @@ implementation can't poll faster or slower).
 | 3 | Power | `0x00` = off, `0x01` = on |
 | 4 | unused | always `0x00` |
 | 5 | Vane / Swing | `0x00` = swing (oscillating). `0x01`-`0x05` = fixed vane position, matching the app's on-screen position number 1:1 (confirmed for positions 3 and 5/top; 1, 2, 4 inferred by pattern, not individually tested) |
-| 6 | unused / static | always observed as `0x09` — only byte with no confirmed function despite extensive testing |
-| 7 | Mode | `0x00` Auto, `0x01` Cool, `0x02` Dry, `0x03` Heat, `0x04` Fan Only |
-| 8 | Feature bitmask | Bit `0x01` = Sleep mode on. Bit `0x02` = UVC light on. Bit `0x04` = Mute on. Bit `0x10` = Display on. `0x00` = none active. Persistent flags (not a pulse/toggle) — confirmed to hold across multiple poll cycles. `0x08` unconfirmed, may be unused. Untested whether bits combine (e.g. `0x03` for sleep+UVC together) |
+| 6 | secondary mode state | **Not static — prior "always `0x09`" claim was wrong.** Confirmed via live IR-remote testing to track mode: `0x08` for Dry and Fan Only, `0x09` for Auto and Heat, `0x0A` for Cool. Not a simple `mode + offset` (Dry and Fan Only share `0x08` despite different mode bytes), so this looks like an independent internal state field the mainboard derives from mode rather than a pure static byte. Function still not fully understood, but it's real and it varies. **Not hardcoded anywhere in the ESPHome component** — commands always mirror the last-received value here, so this doesn't require a code fix, only correcting this doc. |
+| 7 | Mode | `0x00` Auto, `0x01` Cool, `0x02` Dry, `0x03` Heat, `0x04` Fan Only — all five values now directly confirmed via remote (Auto and Heat previously only inferred) |
+| 8 | Feature bitmask | Bit `0x01` = Sleep mode on. Bit `0x02` = UVC light on. Bit `0x04` = Mute on. Bit `0x08` = **Turbo mode on — confirmed live via remote's Turbo button** (previously listed as unconfirmed/possibly unused). Bit `0x10` = Display on. `0x00` = none active. Persistent flags (not a pulse/toggle) — confirmed to hold across multiple poll cycles. **Bits do combine** — confirmed live: Turbo + Display together read as `0x18`. Turbo toggles cleanly (`0x18` → `0x10` on disable) and, unlike Mute, does **not** force a fan-speed change — the fan-speed byte stayed at its existing value across enable/disable. |
 | 9 | Fan speed | `0x00` Auto, `0x01` Low, `0x02` Medium, `0x03` High |
 | 10 | Target temperature | direct value in °C, e.g. `0x18` = 24°C |
 | 11 | Room (indoor) temperature | direct value in °C, e.g. `0x19` = 25°C |
@@ -117,6 +117,21 @@ def checksum(frame_bytes):
 # frame_bytes = all bytes except the trailing checksum byte itself
 ```
 
+## IR remote vs. UART visibility
+
+Live testing (2026-08-24) by watching `uart_debug` raw frames while operating
+the physical IR remote directly (bypassing the app entirely) confirmed that
+**not every remote function is visible on this UART link**:
+
+- **iFeel / Follow-me**: toggled on and off multiple times via remote with
+  zero byte changes anywhere in the 22-byte frame, across 36+ consecutive
+  polls. This function appears to be handled entirely by the remote itself
+  (periodically retransmitting sensed temperature over IR) without the
+  mainboard reporting or requiring any UART-visible state — it cannot be
+  exposed via this component.
+- **Turbo mode**: fully confirmed as byte[8] bit `0x08` (see above) — now
+  exposed as a `turbo` switch in the ESPHome component.
+
 ## Open items / untested
 
 - Fan speed `0x00` was observed once when switching away from Medium; not
@@ -128,15 +143,14 @@ def checksum(frame_bytes):
 - Whether the MCU accepts a single command frame with *multiple* fields
   changed at once (untested — all captures so far show one field changed
   per command).
-- Whether the bits in byte[8] combine (e.g. `0x03` for sleep+UVC together)
-  when multiple features are active simultaneously — untested, each has
-  only been confirmed individually.
-- Bit `0x08` in byte[8] not yet observed. Given confirmed bits are
-  `0x01, 0x02, 0x04, 0x10`, this may simply be unused/reserved rather than
-  an undiscovered feature — no longer assumed to necessarily exist.
-- AC mode Auto (`0x00`) inferred from the sequence but not directly
-  triggered and confirmed via remote/app (Cool, Dry, Heat, Fan Only all
-  directly confirmed).
 - Vane positions 1, 2, and 4 (`byte[5]`) inferred by pattern from the
   confirmed 1:1 mapping seen at positions 3 and 5 (top) — not individually
   tested.
+- **New: vane byte observed as `0x06`** after "initializing"/re-pairing the
+  physical remote — one past the documented `0x00`-`0x05` range. Held
+  steady across many polls afterward. Not yet confirmed what this
+  corresponds to physically (a 6th louver position, an "independent/auto"
+  icon state, or a value the remote sent that the mainboard didn't actually
+  act on). The current `vane_position` select only handles `0x00`-`0x05`
+  and will warn and ignore anything outside that range — needs visual
+  confirmation against the actual louvers before extending the component.

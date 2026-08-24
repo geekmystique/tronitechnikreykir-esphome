@@ -7,8 +7,8 @@ with an ESP running ESPHome. The protocol was derived with help of LLM by piggyb
 ## Files
 
 - `components/reykir_ac_climate/climate.py` — Python config schema
-  (`climate:` platform + four `switch:`-style config blocks for sleep, UVC,
-  mute, display).
+  (`climate:` platform + five `switch:`-style config blocks for sleep, UVC,
+  mute, turbo, display).
 - `components/reykir_ac_climate/reykir_ac_climate.h` / `.cpp` — C++
   implementation: polls the AC every `update_interval`, parses 22-byte
   status frames, and sends one-field-at-a-time set commands mirroring the
@@ -21,8 +21,8 @@ with an ESP running ESPHome. The protocol was derived with help of LLM by piggyb
   (Auto/Low/Medium/High), target temperature, current (room) temperature,
   and swing (oscillating vs. fixed) as a standard Home Assistant/ESPHome
   `climate` entity.
-- Exposes sleep mode, UVC light, mute, and display as separate switches,
-  matching the confirmed bits in byte[8].
+- Exposes sleep mode, UVC light, mute, turbo, and display as separate
+  switches, matching the confirmed bits in byte[8].
 - Polls on a timer (default 5s, matching the original module's behavior)
   since the AC mainboard never pushes state changes unsolicited — this
   also means changes made via the physical remote will only show up after
