@@ -167,7 +167,7 @@ void ReykirAcClimate::publish_vane_select_() {
     ESP_LOGW(TAG, "Unexpected vane byte 0x%02X, not updating select", vane);
     return;
   }
-  auto options = this->vane_select_->traits.get_options();
+  const auto &options = this->vane_select_->traits.get_options();
   if (vane < options.size()) {
     this->vane_select_->publish_state(options[vane]);
   }
